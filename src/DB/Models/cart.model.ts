@@ -1,49 +1,69 @@
 import { MongooseModule, Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import mongoose, { HydratedDocument, Types } from 'mongoose';
-import { Brand } from './brand.model';
+import mongoose, { HydratedDocument } from 'mongoose';
+
+@Schema({ _id: false })
+export class CartItem {
+  @Prop({
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product',
+    required: true,
+  })
+  product!: string;
+
+  @Prop({
+    type: Number,
+    required: true,
+    min: 1,
+    default: 1,
+  })
+  quantity!: number;
+
+  @Prop({
+    type: Number,
+    required: true,
+    min: 0,
+  })
+  pricePerUnit!: number;
+  @Prop({
+    type: Number,
+    required: true,
+    min: 0,
+  })
+  subTotal!: number;
+}
 
 @Schema({
   timestamps: true,
 })
 export class Cart {
   @Prop({
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-  })
-  name!: string;
-
-  @Prop({
-    type: String,
-    required: true,
-  })
-  logo!: string;
-
-  @Prop([
-    {
-      type: mongoose.Schema.Types.ObjectId,
-      required: true,
-      ref: 'Category',
-    },
-  ])
-  categories!: Types.ObjectId[];
-
-  @Prop({
     type: mongoose.Schema.Types.ObjectId,
-    required: true,
     ref: 'User',
+    required: true,
   })
-  createdBy!: string;
+  user!: string;
+
+  @Prop({
+    type: [CartItem],
+    required: true,
+  })
+  items!: CartItem[];
+
+  @Prop({
+    type: Number,
+    required: true,
+    min: 0,
+  })
+  totalPrice!: number;
 }
 
-export const brandSchema = SchemaFactory.createForClass(Brand);
+export const cartSchema = SchemaFactory.createForClass(Cart);
 
-export type HBrandDocument = HydratedDocument<Brand>;
+export type HCartDocument = HydratedDocument<Cart>;
 
-export const BrandModel = MongooseModule.forFeature([
+export const CartModel = MongooseModule.forFeature([
   {
-    name: Brand.name,
-    schema: brandSchema,
+    name: Cart.name,
+    schema: cartSchema,
   },
 ]);

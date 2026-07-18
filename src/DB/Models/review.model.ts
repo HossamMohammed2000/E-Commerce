@@ -16,12 +16,12 @@ export class Review {
     ref: 'User',
     required: true,
   })
-  userId!: string;
+  user!: string;
   @Prop({
     type: Number,
     required: true,
-    max: 5,
     min: 1,
+    max: 5,
   })
   rating!: number;
   @Prop({
@@ -36,11 +36,12 @@ export class Review {
     ref: 'Product',
     required: true,
   })
-  productId!: string;
+  product!: string;
 }
 export const ReviewSchema = SchemaFactory.createForClass(Review);
 ReviewSchema.index({ userId: 1, productId: 1 }, { unique: true });
 export type HReviewDocument = HydratedDocument<Review>;
+ReviewSchema.index({ userId: 1, productId: 1 }, { unique: true });
 export const ReviewsModel = MongooseModule.forFeature([
   {
     name: Review.name,
