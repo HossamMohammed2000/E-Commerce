@@ -7,9 +7,10 @@ import { ProductModel } from 'src/DB/Models/products.model';
 import { UserModel } from 'src/DB/Models/user.model';
 import { TokenService } from 'src/common/services/token.service';
 import { JwtService } from '@nestjs/jwt';
+import { CasheModule } from 'src/cache/cache.module';
 
 @Module({
-  imports: [CartModel, ProductModel, UserModel],
+  imports: [CartModel, ProductModel, UserModel, CasheModule],
   controllers: [CartController],
   providers: [CartService, TokenService, JwtService],
 })

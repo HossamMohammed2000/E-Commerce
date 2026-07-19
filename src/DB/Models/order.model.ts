@@ -13,7 +13,7 @@ class OrderItem {
   })
   product!: string;
   @Prop({ type: Number, required: true })
-  qty!: number;
+  quantity!: number;
 
   @Prop({ type: Number, required: true })
   priceSnapshot!: number;

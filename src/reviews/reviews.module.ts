@@ -6,9 +6,10 @@ import { JwtService } from '@nestjs/jwt';
 import { ProductModel } from 'src/DB/Models/products.model';
 import { ReviewsModel } from 'src/DB/Models/review.model';
 import { UserModel } from 'src/DB/Models/user.model';
+import { CasheModule } from 'src/cache/cache.module';
 
 @Module({
-  imports: [ProductModel, ReviewsModel, UserModel],
+  imports: [ProductModel, ReviewsModel, UserModel, CasheModule],
   providers: [ReviewsService, TokenService, JwtService],
   controllers: [ReviewsController],
 })

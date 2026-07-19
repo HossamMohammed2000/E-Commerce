@@ -18,17 +18,20 @@ import { FileInterceptor } from '@nestjs/platform-express';
 
 import { multerOptions } from 'src/common/utils/multer.utils';
 import { UpdateProductDto } from './dto/update-product.dto';
+import { HttpCacheInterceptor } from 'src/cache/interceptors/cache.interceptor';
 
 @Controller('products')
 export class ProductsController {
   constructor(private readonly productsService: ProductsService) {}
 
   @Get()
+  @UseInterceptors(HttpCacheInterceptor)
   async findAll() {
     return this.productsService.findAll();
   }
 
   @Get(':id')
+  @UseInterceptors(HttpCacheInterceptor)
   async findById(@Param('id') id: string) {
     return this.productsService.findById(id);
   }

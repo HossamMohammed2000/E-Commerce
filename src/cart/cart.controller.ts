@@ -7,10 +7,12 @@ import {
   Post,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { CartService } from './cart.service';
 import { AddToCartDto } from './dto/add-to-cart.dto';
 import { AuthGuard } from 'src/common/guard/auth.guard';
+import { HttpCacheInterceptor } from 'src/cache/interceptors/cache.interceptor';
 
 @Controller('cart')
 @UseGuards(AuthGuard)
@@ -18,6 +20,7 @@ export class CartController {
   constructor(private readonly cartService: CartService) {}
 
   @Get()
+  @UseInterceptors(HttpCacheInterceptor)
   async getCart(@Req() req: any) {
     const userId = req.user._id;
     return await this.cartService.getCart(userId);

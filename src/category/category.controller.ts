@@ -18,16 +18,19 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { multerOptions } from 'src/common/utils/multer.utils';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
+import { HttpCacheInterceptor } from 'src/cache/interceptors/cache.interceptor';
 
 @Controller('category')
 export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
   @Get()
+  @UseInterceptors(HttpCacheInterceptor)
   async findAll() {
     return this.categoryService.findAll();
   }
 
   @Get(':id')
+  @UseInterceptors(HttpCacheInterceptor)
   async findById(@Param('id') id: string) {
     return this.categoryService.findById(id);
   }

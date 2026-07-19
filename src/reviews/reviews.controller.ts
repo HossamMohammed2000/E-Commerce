@@ -9,17 +9,20 @@ import {
   Post,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ReviewsService } from './reviews.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { UpdateReviewDto } from './dto/update-review.dto';
 import { AuthGuard } from 'src/common/guard/auth.guard';
+import { HttpCacheInterceptor } from 'src/cache/interceptors/cache.interceptor';
 
 @Controller('reviews')
 export class ReviewsController {
   constructor(private readonly reviewsService: ReviewsService) {}
 
   @Get(':productId')
+  @UseInterceptors(HttpCacheInterceptor)
   @UseGuards(AuthGuard)
   async findByProduct(@Param('productId') productId: string) {
     return this.reviewsService.findByProduct(productId);
@@ -33,6 +36,7 @@ export class ReviewsController {
   }
 
   @Patch(':id')
+  @UseInterceptors(HttpCacheInterceptor)
   @UseGuards(AuthGuard)
   async update(
     @Body() updateReviewDto: UpdateReviewDto,

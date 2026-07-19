@@ -22,6 +22,7 @@ export class AppController {
   }
 
   @Get()
+  
   findAll() {
     return this.appService.findAll();
   }

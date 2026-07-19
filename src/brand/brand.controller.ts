@@ -18,6 +18,7 @@ import { BrandService } from './brand.service';
 import { AuthGuard } from 'src/common/guard/auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { multerOptions } from 'src/common/utils/multer.utils';
+import { HttpCacheInterceptor } from 'src/cache/interceptors/cache.interceptor';
 
 interface AuthRequest extends Request {
   user: {
@@ -29,11 +30,13 @@ interface AuthRequest extends Request {
 export class BrandController {
   constructor(private readonly brandService: BrandService) {}
   @Get()
+  @UseInterceptors(HttpCacheInterceptor)
   async findAll() {
     return this.brandService.findAll();
   }
 
   @Get(':id')
+  @UseInterceptors(HttpCacheInterceptor)
   async findById(@Param('id') id: string) {
     return this.brandService.findById(id);
   }
