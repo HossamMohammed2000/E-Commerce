@@ -1,6 +1,7 @@
 import { MongooseModule, Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument } from 'mongoose';
-import { OrderStatus } from '../../common/enums/order.enums';
+import { OrderStatus } from 'src/common/enums/order.enums';
+// import { OrderStatus } from '../../common/enums/order.enums';
 
 @Schema({
   _id: false,
