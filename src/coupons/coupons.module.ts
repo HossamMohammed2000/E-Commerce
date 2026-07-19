@@ -7,10 +7,11 @@ import { JwtService } from '@nestjs/jwt';
 import { UserModel } from 'src/DB/Models/user.model';
 import { CouponModel } from 'src/DB/Models/coupons.model';
 import { CasheModule } from 'src/cache/cache.module';
+import { CouponResolver } from './gql-schema/coupon.resolver';
 
 @Module({
   imports: [UserModel, CouponModel, CasheModule],
-  providers: [CouponService, TokenService, JwtService],
+  providers: [CouponService, TokenService, JwtService, CouponResolver],
   controllers: [CouponController],
 })
 export class CouponsModule {}

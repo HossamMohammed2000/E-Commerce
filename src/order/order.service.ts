@@ -13,6 +13,7 @@ import { HProductDocument, Product } from 'src/DB/Models/products.model';
 import { Coupon, HCouponDocument } from 'src/DB/Models/coupons.model';
 import { CreateOrderDto } from './dto/create-order.dtp';
 import { OrderStatus } from 'src/common/enums/order.enums';
+import { SocketService } from 'src/socket/socket.service';
 
 @Injectable()
 export class OrderService {
@@ -28,6 +29,8 @@ export class OrderService {
 
     @InjectModel(Coupon.name)
     private readonly couponModel: Model<HCouponDocument>,
+
+    private readonly socketServce: SocketService,
   ) {}
 
   async checkout(userId: string, dto: CreateOrderDto) {
@@ -90,9 +93,40 @@ export class OrderService {
 
     const finalPrice = calculatedSubTotal - discountAmount;
     for (const item of orderItems) {
-      await this.productModel.findByIdAndUpdate(item.product, {
-        $inc: { stock: -item.quantity },
-      });
+      const updatedProduct = await this.productModel
+        .findByIdAndUpdate(item.product, {
+          $inc: { stock: -item.quantity },
+        })
+        .exec();
+
+      if (updatedProduct) {
+        if (updatedProduct.stock <= 5 && updatedProduct.stock > 0) {
+          await this.socketServce.emitToRoom(
+            `Product:${updatedProduct._id}`,
+            'lowStockAlert',
+            {
+              productId: updatedProduct._id,
+              productName: updatedProduct.name,
+              currentStock: updatedProduct.stock,
+              message: `Running Low! only ${updatedProduct.stock} left of ${updatedProduct.name} in stock`,
+            },
+          );
+          console.log(
+            `📡 [Socket Alert] Low stock room broadcast sent for product:${updatedProduct._id} (Remaining: ${updatedProduct.stock})`,
+          );
+        }
+
+        if (updatedProduct.stock === 0) {
+          await this.socketServce.emitToAll('ProductSoldOut', {
+            productId: updatedProduct._id,
+            productName: updatedProduct.name,
+            message: `❌ ${updatedProduct.name} is now out of stock`,
+          });
+          console.log(
+            `[Socket Alert] Sold out global broadcast sent for ${updatedProduct.name}.`,
+          );
+        }
+      }
     }
     if (targetCoupon) {
       await this.couponModel.findByIdAndUpdate(targetCoupon._id, {

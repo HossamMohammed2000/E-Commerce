@@ -3,8 +3,9 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
-import { resolve } from 'node:path';
+import { join, resolve } from 'node:path';
 import { MongooseModule } from '@nestjs/mongoose';
+import { GraphQLModule } from '@nestjs/graphql';
 import { Connection } from 'mongoose';
 import { MailModule } from './mail/mail.module';
 import { LoggerMiddleware } from './common/middleware/logger.middle';
@@ -17,6 +18,8 @@ import { CouponsModule } from './coupons/coupons.module';
 import { OrderModule } from './order/order.module';
 import { ReviewsModule } from './reviews/reviews.module';
 import { CasheModule } from './cache/cache.module';
+import { ApolloDriver, ApolloDriverConfig } from '@nestjs/apollo';
+import { SocketModule } from './socket/socket.module';
 
 @Module({
   imports: [
@@ -38,7 +41,12 @@ import { CasheModule } from './cache/cache.module';
       }),
       inject: [ConfigService],
     }),
-
+    GraphQLModule.forRoot<ApolloDriverConfig>({
+      driver: ApolloDriver,
+      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      sortSchema: true,
+      context: ({ req }) => ({ req }),
+    }),
     AuthModule,
     MailModule,
     CategoryModule,
@@ -49,13 +57,14 @@ import { CasheModule } from './cache/cache.module';
     OrderModule,
     ReviewsModule,
     CasheModule,
+    SocketModule,
   ],
 
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule  implements NestModule {
-   configure(consumer: MiddlewareConsumer) {
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
     consumer.apply(LoggerMiddleware).forRoutes(AuthController);
-   }
+  }
 }

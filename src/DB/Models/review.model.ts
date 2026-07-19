@@ -17,6 +17,7 @@ export class Review {
     required: true,
   })
   user!: string;
+
   @Prop({
     type: Number,
     required: true,
@@ -24,6 +25,7 @@ export class Review {
     max: 5,
   })
   rating!: number;
+
   @Prop({
     type: String,
     required: true,
@@ -31,6 +33,7 @@ export class Review {
     maxLength: 300,
   })
   comment!: string;
+
   @Prop({
     type: mongoose.Types.ObjectId,
     ref: 'Product',
@@ -38,10 +41,13 @@ export class Review {
   })
   product!: string;
 }
+
 export const ReviewSchema = SchemaFactory.createForClass(Review);
-ReviewSchema.index({ userId: 1, productId: 1 }, { unique: true });
+
+ReviewSchema.index({ user: 1, product: 1 }, { unique: true });
+
 export type HReviewDocument = HydratedDocument<Review>;
-ReviewSchema.index({ userId: 1, productId: 1 }, { unique: true });
+
 export const ReviewsModel = MongooseModule.forFeature([
   {
     name: Review.name,

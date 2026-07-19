@@ -8,10 +8,18 @@ import { CouponModel } from 'src/DB/Models/coupons.model';
 import { TokenService } from 'src/common/services/token.service';
 import { JwtService } from '@nestjs/jwt';
 import { OrderModel } from 'src/DB/Models/order.model';
+import { SocketService } from 'src/socket/socket.service';
+import { SocketGateway } from 'src/socket/socket.gateway';
 
 @Module({
   imports: [OrderModel, UserModel, ProductModel, CartModel, CouponModel],
-  providers: [OrderService, TokenService, JwtService],
+  providers: [
+    OrderService,
+    TokenService,
+    JwtService,
+    SocketService,
+    SocketGateway,
+  ],
   controllers: [OrderController],
 })
 export class OrderModule {}
