@@ -12,3 +12,7 @@ export enum UserRoleEnum {
   USER = 'USER',
   ADMIN = 'ADMIN',
 }
+export enum paymentMethodEnum {
+  CARD = 'CARD',
+  CASH = 'CASH',
+}

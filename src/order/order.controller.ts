@@ -1,21 +1,54 @@
-import { Controller, Get, Post, Body, Req, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Req,
+  UseGuards,
+  Param,
+} from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto } from './dto/create-order.dtp';
 import { AuthGuard } from 'src/common/guard/auth.guard';
+import { Types } from 'mongoose';
+import { User } from 'src/DB/Models/user.model';
 
-@Controller('order')
-@UseGuards(AuthGuard)
+@Controller('api/order')
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
-  @Post('checkout')
-  create(@Body() dto: CreateOrderDto, @Req() req: any) {
+  @UseGuards(AuthGuard)
+  @Post()
+  create(
+    @Body()
+    body: { cartId: string; address: string; phone: string },
+    @Req() req,
+  ) {
     const userId = req.user._id;
-    return this.orderService.checkout(userId, dto);
+    const { cartId, address, phone } = body;
+
+    return this.orderService.create(cartId, address, phone, userId);
   }
 
-  @Get()
-  findAll() {
-    return this.orderService.findAll();
+  @Post('checkout/:orderId')
+  @UseGuards(AuthGuard)
+  async createCheckOutSession(
+    @Param('orderId') orderId: Types.ObjectId,
+    @Req() req,
+  ) {
+    const userId = req.user._id;
+    const session = await this.orderService.createCheckOutSession(
+      orderId,
+      userId,
+    );
+    return session;
+  }
+
+  @Post('refund/:orderId')
+  @UseGuards(AuthGuard)
+  async refundOrder(@Param('orderId') orderId: Types.ObjectId, @Req() req) {
+    const userId = req.user._id;
+    const refund = await this.orderService.refundOrder(orderId, userId);
+    return refund;
   }
 }

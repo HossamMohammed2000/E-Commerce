@@ -10,6 +10,7 @@ import { JwtService } from '@nestjs/jwt';
 import { OrderModel } from 'src/DB/Models/order.model';
 import { SocketService } from 'src/socket/socket.service';
 import { SocketGateway } from 'src/socket/socket.gateway';
+import { PaymentService } from 'src/common/services/payment/payment.service';
 
 @Module({
   imports: [OrderModel, UserModel, ProductModel, CartModel, CouponModel],
@@ -19,6 +20,7 @@ import { SocketGateway } from 'src/socket/socket.gateway';
     JwtService,
     SocketService,
     SocketGateway,
+    PaymentService,
   ],
   controllers: [OrderController],
 })

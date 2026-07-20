@@ -1,7 +1,7 @@
 import { MongooseModule, Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import mongoose, { HydratedDocument } from 'mongoose';
 import { OrderStatus } from 'src/common/enums/order.enums';
-// import { OrderStatus } from '../../common/enums/order.enums';
+// import { OrderStatus } from 'src/common/enums/order.enum';
 
 @Schema({
   _id: false,
@@ -14,7 +14,7 @@ class OrderItem {
   })
   product!: string;
   @Prop({ type: Number, required: true })
-  quantity!: number;
+  qty!: number;
 
   @Prop({ type: Number, required: true })
   priceSnapshot!: number;
@@ -69,6 +69,22 @@ export class Order {
     ref: 'Coupon',
   })
   appliedCoupon?: string;
+
+  @Prop({ type: String })
+  paymentSession?: string;
+
+  @Prop({ type: String })
+  paymentIntentId?: string;
+
+  @Prop({
+    type: String,
+  })
+  refundId!: string;
+
+  @Prop({
+    type: Date,
+  })
+  refundedAt!: Date;
 }
 
 export const OrderSchema = SchemaFactory.createForClass(Order);

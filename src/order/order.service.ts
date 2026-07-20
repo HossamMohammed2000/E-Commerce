@@ -1,19 +1,20 @@
+import { Coupon } from 'src/DB/Models/coupons.model';
 import {
   BadGatewayException,
-  BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-
 import { InjectModel } from '@nestjs/mongoose';
 import { HOrderDocument, Order } from 'src/DB/Models/order.model';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Cart, HCartDocument } from 'src/DB/Models/cart.model';
-import { HProductDocument, Product } from 'src/DB/Models/products.model';
-import { Coupon, HCouponDocument } from 'src/DB/Models/coupons.model';
-import { CreateOrderDto } from './dto/create-order.dtp';
 import { OrderStatus } from 'src/common/enums/order.enums';
 import { SocketService } from 'src/socket/socket.service';
+import type { User } from 'src/DB/Models/user.model';
+import { PaymentService } from 'src/common/services/payment/payment.service';
+// import { Stripe } from 'stripe';
+import Stripe from 'stripe';
+import { paymentMethodEnum } from 'src/common/enums/user.enums';
 
 @Injectable()
 export class OrderService {
@@ -24,134 +25,126 @@ export class OrderService {
     @InjectModel(Cart.name)
     private readonly cartModel: Model<HCartDocument>,
 
-    @InjectModel(Product.name)
-    private readonly productModel: Model<HProductDocument>,
+    private readonly paymentService: PaymentService,
 
-    @InjectModel(Coupon.name)
-    private readonly couponModel: Model<HCouponDocument>,
-
-    private readonly socketServce: SocketService,
+    private readonly socketService: SocketService,
   ) {}
 
-  async checkout(userId: string, dto: CreateOrderDto) {
-    // 1- fetch users's cart
-    const cart = await this.cartModel.findOne({ user: userId });
+  async create(cartId: string, address: string, phone: string, userId: string) {
+    const cart = await this.cartModel.findById(cartId);
 
-    if (!cart || cart.items.length === 0) {
-      throw new BadGatewayException(
-        'Your checkout pipeline is broken:cart is currently empty',
-      );
-    }
-    const orderItems: any[] = [];
-    let calculatedSubTotal = 0;
-
-    for (const item of cart.items) {
-      const dbProduct = await this.productModel.findById(item.product);
-      if (!dbProduct) {
-        throw new NotFoundException(
-          `Checkout aboted: ProductID${item.product} no longer exists`,
-        );
-      }
-      if (dbProduct.stock < item.quantity) {
-        throw new NotFoundException(
-          `Insufficient stock for item ${dbProduct.name}. stored stock:${dbProduct.stock}, requested quantity:${item.quantity}`,
-        );
-      }
-      calculatedSubTotal += Number(dbProduct.price) * item.quantity;
-      orderItems.push({
-        product: item.product,
-        quantity: item.quantity,
-        priceSnapshot: dbProduct.price,
-      });
-      dbProduct.stock -= item.quantity;
-      await dbProduct.save();
-    }
-    let discountAmount = 0;
-    let targetCoupon: HCouponDocument | null = null;
-    if (dto.couponCode) {
-      targetCoupon = await this.couponModel.findOne({
-        code: dto.couponCode.toLocaleUpperCase().trim(),
-      });
-      if (!targetCoupon) {
-        throw new NotFoundException('This Coupon Code Does Not Exist');
-      }
-      if (new Date() > targetCoupon.expireDate) {
-        throw new BadRequestException('This Coupon Code Has Expired');
-      }
-      if (targetCoupon.usedCount >= targetCoupon.maxUsage) {
-        throw new NotFoundException('This Coupon Code Has Reached Its Limit');
-      }
-      if (targetCoupon.usedBy.map((id) => id.toString()).includes(userId)) {
-        throw new BadRequestException('This Coupon Code Has Already Been Used');
-      }
-      if (targetCoupon.usedBy.map((id) => id.toString()).includes(userId)) {
-        throw new BadRequestException('This Coupon Code Has Already Been Used');
-      }
-      discountAmount =
-        (calculatedSubTotal * targetCoupon.discountPercentage) / 100;
+    if (!cart) {
+      throw new NotFoundException('Cart not found');
     }
 
-    const finalPrice = calculatedSubTotal - discountAmount;
-    for (const item of orderItems) {
-      const updatedProduct = await this.productModel
-        .findByIdAndUpdate(item.product, {
-          $inc: { stock: -item.quantity },
-        })
-        .exec();
-
-      if (updatedProduct) {
-        if (updatedProduct.stock <= 5 && updatedProduct.stock > 0) {
-          await this.socketServce.emitToRoom(
-            `Product:${updatedProduct._id}`,
-            'lowStockAlert',
-            {
-              productId: updatedProduct._id,
-              productName: updatedProduct.name,
-              currentStock: updatedProduct.stock,
-              message: `Running Low! only ${updatedProduct.stock} left of ${updatedProduct.name} in stock`,
-            },
-          );
-          console.log(
-            `📡 [Socket Alert] Low stock room broadcast sent for product:${updatedProduct._id} (Remaining: ${updatedProduct.stock})`,
-          );
-        }
-
-        if (updatedProduct.stock === 0) {
-          await this.socketServce.emitToAll('ProductSoldOut', {
-            productId: updatedProduct._id,
-            productName: updatedProduct.name,
-            message: `❌ ${updatedProduct.name} is now out of stock`,
-          });
-          console.log(
-            `[Socket Alert] Sold out global broadcast sent for ${updatedProduct.name}.`,
-          );
-        }
-      }
-    }
-    if (targetCoupon) {
-      await this.couponModel.findByIdAndUpdate(targetCoupon._id, {
-        $inc: { usedCount: 1 },
-        $push: { usedBy: userId },
-      });
-    }
-    const order = new this.orderModel({
+    const order = await this.orderModel.create({
       user: userId,
-      items: orderItems,
-      subTotal: calculatedSubTotal,
-      discountAmount,
-      finalPrice,
-      shippingAddress: dto.shippingAddress,
-      appliedCoupon: targetCoupon ? targetCoupon._id : null,
-      status: OrderStatus.PENDING,
+      items: cart.items.map((item) => ({
+        product: item.product,
+        qty: item.quantity,
+        priceSnapshot: item.pricePerUnit,
+      })),
+      subTotal: cart.totalPrice,
+      totalPrice: cart.totalPrice,
+      shippingAddress: address,
+      status: OrderStatus.PROCESSING,
     });
-    await order.save();
-    cart.items = [];
-    cart.totalPrice = 0;
-    await cart.save();
+
     return order;
   }
 
-  findAll() {
-    return `This action returns all order`;
+  async createCheckOutSession(orderId: Types.ObjectId, userId: Types.ObjectId) {
+    const order = await this.orderModel
+      .findOne({
+        _id: orderId,
+        user: userId.toString(),
+        status: OrderStatus.PROCESSING,
+        paymentMethod: paymentMethodEnum.CARD,
+      })
+      .populate([{ path: 'user' }, { path: 'appliedCoupon' }]);
+
+    if (!order) {
+      throw new NotFoundException('order not found');
+    }
+
+    const amount = order.totalPrice;
+
+    const user = order.user as unknown as User;
+
+    const line_items = [
+      {
+        price_data: {
+          currency: 'egp',
+          product_data: {
+            name: `Order ${user.firstName}`,
+            description: `Payment for order on Address ${order.shippingAddress}`,
+          },
+          unit_amount: amount * 100,
+        },
+        quantity: 1,
+      },
+    ];
+
+    let discounts: Stripe.Checkout.SessionCreateParams.Discount[] = [];
+    if (order.discountAmount) {
+      const coupon = await this.paymentService.createCoupon({
+        duration: 'once',
+        currency: 'egp',
+        percent_off: order.discountAmount,
+      });
+      discounts.push({ coupon: coupon.id });
+    }
+    const session = await this.paymentService.checkoutSession({
+      customer_email: user.email,
+      line_items,
+      mode: 'payment',
+      discounts,
+      metadata: {
+        orderId: orderId.toString(),
+      },
+    });
+
+    const method = await this.paymentService.createPaymentMethod({
+      type: 'card',
+      card: { token: 'token_visa' },
+    });
+
+    const intent = await this.paymentService.createPaymentIntent({
+      amount: order.subTotal * 100,
+      currency: 'egp',
+      payment_method: method.id,
+      payment_method_types: [paymentMethodEnum.CARD],
+    });
+
+    order.paymentIntentId = intent.id;
+    await order.save();
+    await this.paymentService.confirmPaymentIntent(intent.id);
+    return session;
+  }
+
+  async refundOrder(orderId: Types.ObjectId, userId: Types.ObjectId) {
+    const order = await this.orderModel.findOne({
+      _id: orderId,
+      user: userId.toString(),
+      paymentMethod: paymentMethodEnum.CARD,
+    });
+    if (!order) throw new NotFoundException('order not found');
+    if (!order.paymentIntentId)
+      throw new BadGatewayException('No Payment Intent Found For This Order');
+    const refund = await this.paymentService.createRefund(
+      order.paymentIntentId,
+    );
+    await this.orderModel.findByIdAndUpdate(
+      orderId,
+      {
+        status: OrderStatus.CANCELLED,
+        refundId: refund.id,
+        refundedAt: new Date(),
+        $unset: { paymentIntentId: true },
+        $_inc: { __v: 1 },
+      },
+      { new: true },
+    );
+    return order;
   }
 }
